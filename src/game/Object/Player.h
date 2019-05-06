@@ -1072,6 +1072,7 @@ class Player : public Unit
         }
 
         void SetDeathState(DeathState s) override;          // overwrite Unit::SetDeathState
+		void HandlePermanentDeath();
 
         float GetRestBonus() const
         {

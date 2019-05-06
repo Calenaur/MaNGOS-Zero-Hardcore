@@ -1394,6 +1394,14 @@ void Player::SetDeathState(DeathState s)
         if (getClass() == CLASS_WARRIOR)
             { CastSpell(this, SPELL_ID_PASSIVE_BATTLE_STANCE, true); }
     }
+
+	HandlePermanentDeath();
+}
+
+void Player::HandlePermanentDeath() 
+{
+	CharacterDatabase.DirectPExecute("UPDATE characters SET account = 0 WHERE guid = %u", GetGUIDLow());
+	this->GetSession()->LogoutPlayer(false);
 }
 
 bool Player::BuildEnumData(QueryResult* result, WorldPacket* p_data)

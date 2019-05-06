@@ -512,6 +512,8 @@ bool Loot::FillLoot(uint32 loot_id, LootStore const& store, Player* loot_owner, 
     m_questItems.reserve(MAX_NR_QUEST_ITEMS);
 
     tab->Process(*this, store, store.IsRatesAllowed());     // Processing is done there, callback via Loot::AddItem()
+	tab->RollBonusLoot(*this);
+
 
     // Setting access rights for group loot case
     Group* pGroup = loot_owner->GetGroup();
@@ -1089,6 +1091,42 @@ void LootTemplate::AddEntry(LootStoreItem& item)
     }
     else                                                    // Non-grouped entries and references are stored together
         { Entries.push_back(item); }
+}
+
+void LootTemplate::RollBonusLoot(Loot& loot) const
+{
+	//SELECT l.*, t.NAME, t.RequiredLevel FROM bonus_loot AS l JOIN item_template AS t ON l.item = t.entry;
+	QueryResult* result = WorldDatabase.PQuery("SELECT item FROM bonus_loot ORDER BY RAND() * weight DESC LIMIT 1");
+	if (!result)
+	{
+		sLog.outError("No bonus loot found, consider adding some.");
+		return;
+	}
+
+	do
+	{
+		char buffer[256];
+		Field* fields = result->Fetch();
+		uint32 itemId = fields[0].GetUInt32();
+		switch (itemId)
+		{
+			case 0:
+				break;
+			case 1:
+				loot.gold += 100000; //10 gold
+				sprintf(buffer, "%s drops a chunky gold pouch.", loot.GetLootTarget()->GetName());
+				loot.GetLootTarget()->MonsterTextEmote(buffer, NULL);
+				break;
+			default:
+				LootStoreItem item = LootStoreItem(fields[0].GetUInt32(), 100.0, 0, 0, 1, 1);
+				if (&item != NULL)
+					loot.AddItem(item);
+				sprintf(buffer, "%s drops something strange...", loot.GetLootTarget()->GetName());
+				loot.GetLootTarget()->MonsterTextEmote(buffer, NULL);
+				break;
+		}
+	} while (result->NextRow());
+	delete result;
 }
 
 // Rolls for every item in the template and adds the rolled items the the loot
